@@ -101,6 +101,10 @@ class DataProcessor(object):
         """Gets a collection of `InputExample`s for the dev set."""
         raise NotImplementedError()
 
+    def get_test_examples(self, data_dir):
+        """Gets a collection of `InputExample`s for the test set."""
+        raise NotImplementedError()
+
     def get_labels(self):
         """Gets the list of labels for this data set."""
         raise NotImplementedError()
@@ -448,6 +452,7 @@ class WnliProcessor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
+
 class TnewsProcessor(DataProcessor):
     """Processor for the Tnews data set (CLUE version)."""
 
@@ -468,6 +473,10 @@ class TnewsProcessor(DataProcessor):
         """See base class."""
         return self._create_examples(self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
 
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
     def get_labels(self):
         """See base class."""
         return ["100", "101", "102", "103", "104", "106", "107", "108", "109", "110", "112", "113", "114", "115", "116"]
@@ -481,7 +490,12 @@ class TnewsProcessor(DataProcessor):
             json_ln = json.loads(line[0])
 
             text_a = json_ln['sentence'] + json_ln['keywords']
-            label = json_ln['label']
+
+            label = "100"
+            
+            if 'label' in json_ln:
+                label = json_ln['label']
+            
             examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
         return examples
 
@@ -684,6 +698,49 @@ def do_eval(model, task_name, eval_dataloader,
     return result
 
 
+def do_predict(model, task_name, eval_dataloader,
+            device, output_mode, eval_labels, num_labels, result_path):
+    eval_loss = 0
+    nb_eval_steps = 0
+    preds = []
+
+    for batch_ in tqdm(eval_dataloader, desc="Evaluating"):
+        batch_ = tuple(t.to(device) for t in batch_)
+        with torch.no_grad():
+            input_ids, input_mask, segment_ids, label_ids, seq_lengths = batch_
+
+            logits, _, _ = model(input_ids, segment_ids, input_mask)
+
+        # create eval loss and other metric required by the task
+        if output_mode == "classification":
+            loss_fct = CrossEntropyLoss()
+            tmp_eval_loss = loss_fct(logits.view(-1, num_labels), label_ids.view(-1))
+        elif output_mode == "regression":
+            loss_fct = MSELoss()
+            tmp_eval_loss = loss_fct(logits.view(-1), label_ids.view(-1))
+
+        eval_loss += tmp_eval_loss.mean().item()
+        nb_eval_steps += 1
+        if len(preds) == 0:
+            preds.append(logits.detach().cpu().numpy())
+        else:
+            preds[0] = np.append(
+                preds[0], logits.detach().cpu().numpy(), axis=0)
+
+    eval_loss = eval_loss / nb_eval_steps
+
+    preds = preds[0]
+    if output_mode == "classification":
+        preds = np.argmax(preds, axis=1)
+    elif output_mode == "regression":
+        preds = np.squeeze(preds)
+    
+
+    #Write the predictions to files
+    print("-------writing the predictions to file")
+    np.savetxt(result_path, preds)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data_dir",
@@ -723,6 +780,9 @@ def main():
     parser.add_argument("--do_eval",
                         action='store_true',
                         help="Whether to run eval on the dev set.")
+    parser.add_argument("--do_predict",
+                        action='store_true',
+                        help="Whether to run predict on the test set.")
     parser.add_argument("--do_lower_case",
                         action='store_true',
                         help="Set this flag if you are using an uncased model.")
@@ -778,6 +838,9 @@ def main():
     parser.add_argument('--temperature',
                         type=float,
                         default=1.)
+    parser.add_argument('--pred_path',
+                        type=str,
+                        default="/tmp/results.csv")
 
     args = parser.parse_args()
     logger.info('The args: {}'.format(args))
@@ -887,6 +950,7 @@ def main():
         train_sampler = RandomSampler(train_data)
         train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=args.train_batch_size)
 
+    #For eval data set.
     eval_examples = processor.get_dev_examples(args.data_dir)
     eval_features = convert_examples_to_features(eval_examples, label_list, args.max_seq_length, tokenizer, output_mode)
     eval_data, eval_labels = get_tensor_data(output_mode, eval_features)
@@ -910,7 +974,7 @@ def main():
         logger.info("***** Eval results *****")
         for key in sorted(result.keys()):
             logger.info("  %s = %s", key, str(result[key]))
-    else:
+    elif args.do_train:
         logger.info("***** Running training *****")
         logger.info("  Num examples = %d", len(train_examples))
         logger.info("  Batch size = %d", args.train_batch_size)
@@ -1126,7 +1190,23 @@ def main():
                             mox.file.copy_parallel('.', args.data_url)
 
                     student_model.train()
+    elif args.do_predict:
+        #For eval data set.
+        pred_examples = processor.get_test_examples(args.data_dir)
+        pred_features = convert_examples_to_features(pred_examples, label_list, args.max_seq_length, tokenizer, output_mode)
+        pred_data, pred_labels = get_tensor_data(output_mode, pred_features)
+        pred_sampler = SequentialSampler(pred_data)
+        pred_dataloader = DataLoader(pred_data, sampler=pred_sampler, batch_size=args.eval_batch_size)
 
+        logger.info("***** Running prediction *****")
+        logger.info("  Num examples = %d", len(pred_examples))
+        logger.info("  Batch size = %d", args.eval_batch_size)
+
+        student_model.eval()
+        result = do_predict(student_model, task_name, pred_dataloader,
+                         device, output_mode, pred_labels, num_labels, args.pred_path)
+        logger.info("***** done *****")
+    
 
 if __name__ == "__main__":
     main()
