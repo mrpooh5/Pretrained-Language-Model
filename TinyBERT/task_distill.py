@@ -24,6 +24,7 @@ import logging
 import os
 import random
 import sys
+import json
 
 import numpy as np
 import torch
@@ -447,6 +448,43 @@ class WnliProcessor(DataProcessor):
                 InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
         return examples
 
+class TnewsProcessor(DataProcessor):
+    """Processor for the Tnews data set (CLUE version)."""
+
+    def get_example_from_tensor_dict(self, tensor_dict):
+        """See base class."""
+        return InputExample(
+            tensor_dict["idx"].numpy(),
+            tensor_dict["sentence"].numpy().decode("utf-8"),
+            None,
+            str(tensor_dict["label"].numpy()),
+        )
+
+    def get_train_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+    def get_labels(self):
+        """See base class."""
+        return ["100", "101", "102", "103", "104", "106", "107", "108", "109", "110", "112", "113", "114", "115", "116"]
+
+    def _create_examples(self, lines, set_type):
+        """Creates examples for the training and dev sets."""
+        examples = []
+        for (i, line) in enumerate(lines):
+            guid = "%s-%s" % (set_type, i)
+            
+            json_ln = json.loads(line[0])
+
+            text_a = json_ln['sentence'] + json_ln['keywords']
+            label = json_ln['label']
+            examples.append(InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+        return examples
+
 
 def convert_examples_to_features(examples, label_list, max_seq_length,
                                  tokenizer, output_mode):
@@ -575,6 +613,8 @@ def compute_metrics(task_name, preds, labels):
         return {"acc": simple_accuracy(preds, labels)}
     elif task_name == "wnli":
         return {"acc": simple_accuracy(preds, labels)}
+    elif task_name == "tnews":
+            return {"acc": simple_accuracy(preds, labels)}    
     else:
         raise KeyError(task_name)
 
@@ -752,7 +792,8 @@ def main():
         "qqp": QqpProcessor,
         "qnli": QnliProcessor,
         "rte": RteProcessor,
-        "wnli": WnliProcessor
+        "wnli": WnliProcessor,
+        "tnews": TnewsProcessor
     }
 
     output_modes = {
@@ -764,7 +805,8 @@ def main():
         "qqp": "classification",
         "qnli": "classification",
         "rte": "classification",
-        "wnli": "classification"
+        "wnli": "classification",
+        "tnews": "classification"
     }
 
     # intermediate distillation default parameters
@@ -779,7 +821,7 @@ def main():
         "rte": {"num_train_epochs": 20, "max_seq_length": 128}
     }
 
-    acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte"]
+    acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "tnews"]
     corr_tasks = ["sts-b"]
     mcc_tasks = ["cola"]
 
