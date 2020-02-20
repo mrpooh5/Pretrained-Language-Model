@@ -613,6 +613,8 @@ def compute_metrics(task_name, preds, labels):
         return {"acc": simple_accuracy(preds, labels)}
     elif task_name == "mrpc":
         return acc_and_f1(preds, labels)
+    elif task_name == "afqmc":
+        return acc_and_f1(preds, labels)
     elif task_name == "sts-b":
         return pearson_and_spearman(preds, labels)
     elif task_name == "qqp":
@@ -855,7 +857,7 @@ def main():
         "rte": RteProcessor,
         "wnli": WnliProcessor,
         "tnews": TnewsProcessor,
-        "afmqc": MrpcProcessor
+        "afqmc": MrpcProcessor
     }
 
     output_modes = {
@@ -869,7 +871,7 @@ def main():
         "rte": "classification",
         "wnli": "classification",
         "tnews": "classification",
-        "afmqc": "classification"
+        "afqmc": "classification"
     }
 
     # intermediate distillation default parameters
@@ -884,7 +886,7 @@ def main():
         "rte": {"num_train_epochs": 20, "max_seq_length": 128}
     }
 
-    acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "tnews", "afmqc"]
+    acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "tnews", "afqmc"]
     corr_tasks = ["sts-b"]
     mcc_tasks = ["cola"]
 
