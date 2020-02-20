@@ -1,8 +1,8 @@
-export FT_BERT_BASE_DIR=/home/zhaoqun3/tmp/tnews/bert-base
-export GENERAL_TINYBERT_DIR=/home/zhaoqun3/data/tinybert/general/general-chinese-6-12-768-164495-0
-export TASK_DIR=/home/zhaoqun3/data/tnews
 export TASK_NAME=tnews
-export TMP_TINYBERT_DIR=/home/zhaoqun3/data/tinybert/tnews/dis1
+export FT_BERT_BASE_DIR=/home/zhaoqun3/tmp/$TASK_NAME/bert-base
+export GENERAL_TINYBERT_DIR=/home/zhaoqun3/data/tinybert/general/general-chinese-6-12-768-164495-0
+export TASK_DIR=/home/zhaoqun3/data/$TASK_NAME
+export TMP_TINYBERT_DIR=/home/zhaoqun3/data/tinybert/$TASK_NAME/dis1
 
 nohup python -u task_distill.py \
   --teacher_model $FT_BERT_BASE_DIR \

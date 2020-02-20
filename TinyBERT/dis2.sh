@@ -1,8 +1,8 @@
-export FT_BERT_BASE_DIR=/home/zhaoqun3/tmp/MRPC/bert-base
-export TASK_DIR=/home/zhaoqun3/data/afqmc
-export TASK_NAME=MRPC
-export SPECIFIC_TINYBERT_DIR=/home/zhaoqun3/data/tinybert/afqmc/dis1
-export TINYBERT_DIR=/home/zhaoqun3/data/tinybert/afqmc/final
+export TASK_NAME=tnews
+export FT_BERT_BASE_DIR=/home/zhaoqun3/tmp/$TASK_NAME/bert-base
+export TASK_DIR=/home/zhaoqun3/data/$TASK_NAME
+export SPECIFIC_TINYBERT_DIR=/home/zhaoqun3/data/tinybert/$TASK_NAME/dis1
+export TINYBERT_DIR=/home/zhaoqun3/data/tinybert/$TASK_NAME/final
 
 python task_distill.py --pred_distill  \
   --teacher_model ${FT_BERT_BASE_DIR} \
