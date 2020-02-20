@@ -930,7 +930,7 @@ def main():
 
     tokenizer = BertTokenizer.from_pretrained(args.student_model, do_lower_case=args.do_lower_case)
 
-    if not args.do_eval:
+    if not args.do_eval and not args.do_predict:
         if not args.aug_train:
             train_examples = processor.get_train_examples(args.data_dir)
         else:
@@ -957,12 +957,13 @@ def main():
     eval_sampler = SequentialSampler(eval_data)
     eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
-    if not args.do_eval:
+    if not args.do_eval and not args.do_predict:
         teacher_model = TinyBertForSequenceClassification.from_pretrained(args.teacher_model, num_labels=num_labels)
         teacher_model.to(device)
 
     student_model = TinyBertForSequenceClassification.from_pretrained(args.student_model, num_labels=num_labels)
     student_model.to(device)
+
     if args.do_eval:
         logger.info("***** Running evaluation *****")
         logger.info("  Num examples = %d", len(eval_examples))
