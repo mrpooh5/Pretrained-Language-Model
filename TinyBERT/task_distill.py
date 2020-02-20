@@ -138,6 +138,10 @@ class MrpcProcessor(DataProcessor):
     def get_aug_examples(self, data_dir):
         return self._create_examples(
             self._read_tsv(os.path.join(data_dir, "train_aug.tsv")), "aug")
+    
+    def get_test_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
 
     def get_labels(self):
         """See base class."""
