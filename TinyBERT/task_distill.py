@@ -704,7 +704,7 @@ def do_predict(model, task_name, eval_dataloader,
     nb_eval_steps = 0
     preds = []
 
-    for batch_ in tqdm(eval_dataloader, desc="Evaluating"):
+    for batch_ in tqdm(eval_dataloader, desc="Predicting"):
         batch_ = tuple(t.to(device) for t in batch_)
         with torch.no_grad():
             input_ids, input_mask, segment_ids, label_ids, seq_lengths = batch_
@@ -727,18 +727,16 @@ def do_predict(model, task_name, eval_dataloader,
             preds[0] = np.append(
                 preds[0], logits.detach().cpu().numpy(), axis=0)
 
-    eval_loss = eval_loss / nb_eval_steps
-
     preds = preds[0]
+
     if output_mode == "classification":
         preds = np.argmax(preds, axis=1)
     elif output_mode == "regression":
         preds = np.squeeze(preds)
     
-
     #Write the predictions to files
-    print("-------writing the predictions to file")
-    np.savetxt(result_path, preds)
+    print("-------writing the predictions to file\t" + result_path)
+    np.savetxt(result_path, preds.astype(int), fmt='%i')
 
 
 def main():
@@ -856,7 +854,8 @@ def main():
         "qnli": QnliProcessor,
         "rte": RteProcessor,
         "wnli": WnliProcessor,
-        "tnews": TnewsProcessor
+        "tnews": TnewsProcessor,
+        "afmqc": MrpcProcessor
     }
 
     output_modes = {
@@ -869,7 +868,8 @@ def main():
         "qnli": "classification",
         "rte": "classification",
         "wnli": "classification",
-        "tnews": "classification"
+        "tnews": "classification",
+        "afmqc": "classification"
     }
 
     # intermediate distillation default parameters
@@ -884,7 +884,7 @@ def main():
         "rte": {"num_train_epochs": 20, "max_seq_length": 128}
     }
 
-    acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "tnews"]
+    acc_tasks = ["mnli", "mrpc", "sst-2", "qqp", "qnli", "rte", "tnews", "afmqc"]
     corr_tasks = ["sts-b"]
     mcc_tasks = ["cola"]
 

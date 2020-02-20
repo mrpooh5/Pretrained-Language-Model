@@ -8,6 +8,6 @@ CUDA_VISIBLE_DEVICES=3 python task_distill.py \
   --student_model ${TINYBERT_DIR}/$TASK_NAME \
   --data_dir $TASK_DIR \
   --task_name $TASK_NAME \
-  --output_dir $OUTPUT_DIR \
   --eval_batch_size 32 \
-  --max_seq_length 128
+  --max_seq_length 128 \
+  --pred_path $OUTPUT_DIR
