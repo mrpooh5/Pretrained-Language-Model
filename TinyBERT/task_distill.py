@@ -975,7 +975,23 @@ def main():
         logger.info("***** Eval results *****")
         for key in sorted(result.keys()):
             logger.info("  %s = %s", key, str(result[key]))
-    elif args.do_train:
+    elif args.do_predict:
+        #For eval data set.
+        pred_examples = processor.get_test_examples(args.data_dir)
+        pred_features = convert_examples_to_features(pred_examples, label_list, args.max_seq_length, tokenizer, output_mode)
+        pred_data, pred_labels = get_tensor_data(output_mode, pred_features)
+        pred_sampler = SequentialSampler(pred_data)
+        pred_dataloader = DataLoader(pred_data, sampler=pred_sampler, batch_size=args.eval_batch_size)
+
+        logger.info("***** Running prediction *****")
+        logger.info("  Num examples = %d", len(pred_examples))
+        logger.info("  Batch size = %d", args.eval_batch_size)
+
+        student_model.eval()
+        do_predict(student_model, task_name, pred_dataloader,
+                         device, output_mode, pred_labels, num_labels, args.pred_path)
+        logger.info("***** done *****")
+    else:
         logger.info("***** Running training *****")
         logger.info("  Num examples = %d", len(train_examples))
         logger.info("  Batch size = %d", args.train_batch_size)
@@ -1191,22 +1207,6 @@ def main():
                             mox.file.copy_parallel('.', args.data_url)
 
                     student_model.train()
-    elif args.do_predict:
-        #For eval data set.
-        pred_examples = processor.get_test_examples(args.data_dir)
-        pred_features = convert_examples_to_features(pred_examples, label_list, args.max_seq_length, tokenizer, output_mode)
-        pred_data, pred_labels = get_tensor_data(output_mode, pred_features)
-        pred_sampler = SequentialSampler(pred_data)
-        pred_dataloader = DataLoader(pred_data, sampler=pred_sampler, batch_size=args.eval_batch_size)
-
-        logger.info("***** Running prediction *****")
-        logger.info("  Num examples = %d", len(pred_examples))
-        logger.info("  Batch size = %d", args.eval_batch_size)
-
-        student_model.eval()
-        result = do_predict(student_model, task_name, pred_dataloader,
-                         device, output_mode, pred_labels, num_labels, args.pred_path)
-        logger.info("***** done *****")
     
 
 if __name__ == "__main__":
